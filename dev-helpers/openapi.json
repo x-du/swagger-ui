@@ -1,0 +1,151 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "Test REST",
+    "description" : "Test",
+    "version" : "2021"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "tags" : [{
+    "name" : "Filters",
+    "description" : "Methods that view or manipulate filter objects"
+  } ],
+  "paths" : {
+    "/api/model/filters/{FilterId}" : {
+      "get" : {
+        "tags" : [ "Filters" ],
+        "summary" : "Read a filter",
+        "description" : "The response returns the definition of a single filter. \n\nThe project ID is required to return a filter's definition in metadata.\nThe changeset ID is required to return a filter's definition within a specific changeset.\nTo execute the request, either the project ID or changeset ID needs to be provided.  If both are provided, only the changeset ID is used.\n\nThe changeset ID can be obtained using the changeset creation API.\nAn authorization token is required to execute the request and can be obtained using Authentication endpoints.\n",
+        "operationId" : "ms-getFilterDetails",
+        "parameters" : [ {
+          "name" : "X-MSTR-AuthToken",
+          "in" : "header",
+          "description" : "Authorization Token",
+          "required" : true,
+          "style" : "simple",
+          "explode" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "FilterId",
+          "in" : "path",
+          "description" : "Filter ID\n\nThe ID can be:\n* the object ID used in metadata.\n* the object ID used in changeset, but not yet committed to metadata.\n",
+          "required" : true,
+          "style" : "simple",
+          "explode" : false,
+          "schema" : {
+            "type": "string"
+          }
+        }],
+        "responses" : {
+          "200" : {
+            "description" : "Filter's definition is returned successfully.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ms-Expression"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "ms-Expression" : {
+        "title" : "Expression",
+        "type" : "object",
+        "properties" : {
+          "tree" : {
+            "$ref" : "#/components/schemas/ms-ExpressionNode"
+          },
+          "text" : {
+            "type" : "string",
+            "description" : "Human readable description of the expression.  It is generated from the current specification\nof the expression.\n\nThis string will appear similar to a parsable description of the expression in\nthe current user's locale.  It is intended to be used to allow a user to easily\ndistinguish between expressions.  But this string cannot actually be used as input to a\nparser session because it does not contain hidden information about ambiguities in\nthe parse text.\n\nSince this representation is not able to fully describe an expression, there is\nno point in the client ever sending it to the service.\n",
+            "readOnly" : true,
+            "example" : "TOTAL_COST"
+          }
+        },
+        "description" : "A generic specification for a calculation stored within a metadata object.\nThe expression is represented as a tree over nodes.  Most internal nodes\n(called _operator_ nodes) are defined by applying a function to the operator's child nodes.\n\nUsually an expression must be non-empty.  But in a few cases, most notably a filter expression\nit is valid for an expression to contain no nodes at all.  An expression is _empty_ if and only if\nit does not have a `tree` property.\n\nAlternatively the client may prefer to handle an expression as a list of tokens.\nEach token represents part of the raw text of the expression, in some cases annotated\nwith additional information.\n"
+      },
+
+      "ms-ExpressionNode" : {
+        "title" : "Any Node",
+        "description" : "A single node that is used to build up an expression.\nWe have a number of different types of expression node, one for each building block that can\nappear in an expression.  This schema represents any one of these kinds of nodes.\n\nSome of these nodes (the ones beginning with `predicate...`) are only used within filters.\nPredicates represent part of the filter expression tree that are treated as a single node.\n",
+        
+        "discriminator" : {
+          "propertyName" : "type"
+          
+        },
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/ms-PredicateCustomExpression"
+        },{
+          "$ref" : "#/components/schemas/ms-ExpressionNodeConstant"
+        } ]
+      },
+      "ms-PredicateCustomExpression" : {
+        "title" : "Custom Expression Predicate",
+        "description" : "Specialized expression node that contains a custom expression predicate.\n\nThis qualification contains a valid expression, usually created by the user, which can't be categorized into\nother types.\n\nThe expression is represented by an array of tokens. The predicate has the predicate details which contains the tokens\nrepresenting the expression. It's controlled by the `showPredicates` to show or hide.\n",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/ms-PredicateBase"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "predicateTree" : {
+              "properties" : {
+                "expression" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ms-Expression"
+                  } ]
+                }
+              }
+            }
+          }
+        } ]
+      },
+      "ms-ExpressionNodeConstant" : {
+        "title" : "Constant Node",
+        "description" : "An expression node that contains a literal value. ",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/ms-ExpressionNodeBase"
+        }, {
+          "type" : "string"
+          
+        } ]
+      },
+      "ms-ExpressionNodeBase" : {
+        "title" : "Expression Node (Base)",
+        "required" : [ "type" ],
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "description" : "The type of this node within the expression tree"
+          }
+        },
+        "description" : "Common properties that are shared by all the kinds of Expression node"
+      },
+      "ms-PredicateBase" : {
+        "title" : "Predicate Node (Base)",
+        "description" : "Base schema for all expression nodes that are considered to be predicates.",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/ms-ExpressionNodeBase"
+        }, {
+          "required" : [ "predicateId", "predicateText" ],
+          "type" : "object",
+          "properties" : {
+            "predicateId" : {
+              "type" : "string",
+              "description" : "\n"
+            }
+          }
+        } ]
+      }            
+    }
+  }
+}
